@@ -1,2 +1,2 @@
-AIzaSyDaH5VgsGjsMZlnZKfS1YZbOJOhGkp_PTg
-
+pip install google-generativeai google-ai-generativelanguage google-cloud-aiplatform python-dotenv pydantic pydantic-core httpx aiohttp fastapi uvicorn starlette typing-extensions click rich python-json-logger pytest black flake8 isort
+ 
