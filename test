@@ -11,3 +11,13 @@ cat > ~/.adk << 'EOF'
   "version": "0.0.5"
 }
 EOF
+
+
+
+cat > rpc.json << EOF
+{
+  "server_id": "insurance_advisor_rpc",
+  "port": 50051,
+  "key": "local-dev-key"
+}
+EOF
