@@ -1,2 +1,13 @@
-pip install google-generativeai google-ai-generativelanguage google-cloud-aiplatform python-dotenv pydantic pydantic-core httpx aiohttp fastapi uvicorn starlette typing-extensions click rich python-json-logger pytest black flake8 isort
- 
+cat > ~/.adk << 'EOF'
+{
+  "rpc": {
+    "servers": {
+      "default": {
+        "host": "0.0.0.0",
+        "port": 8000
+      }
+    }
+  },
+  "version": "0.0.5"
+}
+EOF
