@@ -1,25 +1,21 @@
-cat > ~/.adk << 'EOF'
-{
-  "rpc": {
-    "servers": {
-      "default": {
-        "host": "0.0.0.0",
-        "port": 8000
-      }
-    }
-  },
-  "version": "0.0.5"
-}
-EOF
-
-
-
-cat > rpc.json << EOF
-{
-  "server_id": "insurance_advisor_rpc",
-  "port": 50051,
-  "key": "local-dev-key"
-}
-EOF
-AIzaSyDaH5VgsGjsMZlnZKfS1YZbOJOhGkp_PTg
- 
+insurance_advisor_pro/
+├── .env                          # Stores the confidential Gemini API Key
+├── .gitignore                    # Tells Git to ignore files (like .env, venv/, etc.)
+├── README.md                     # Project documentation/setup instructions
+├── requirements.txt              # Lists all Python dependencies
+├── app.log                       # Server log file (from the 'nohup' command on AWS)
+├── **docs/** # Project documentation, guides, or manuals (Static)
+├── **userdata/** # Directory for persistent data, state, or user files (Dynamic)
+├── venv/                         # Python Virtual Environment (Ignored by Git)
+│   ├── bin/                      # (Executable scripts like 'adk', 'python')
+│   └── lib/                      # (All installed Python libraries)
+├── config/
+│   └── gemini_client.py          # Script to initialize Gemini model and tools
+└── advisor_app/                  # The Core Application Package
+    ├── __init__.py               # Designates 'advisor_app' as a Python package
+    ├── root_agent.py             # Main Orchestrator Agent
+    ├── auth_agent.py             # Agent handling user login
+    ├── profile_agent.py          # Agent collecting profile data
+    ├── risk_agent.py             # Agent analyzing user risk
+    ├── recommendation_agent.py   # Agent generating the final policy suggestions
+    └── utils.py                  # Utility functions (data validation, schemas, etc.)
