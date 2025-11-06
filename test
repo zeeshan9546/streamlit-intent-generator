@@ -1,344 +1,208 @@
-I have to write a script using Groovy that accepts an API response as an argument. The API response is in XML format, as shown below. First i need to convert it to JSON and extract the fields from converted json mentionedb below. If any of these fields are missing from the API response, we need to explicitly assign them an empty string. The final map should have the API field names as keys and the extracted values as values. If a field is not present in the API response, it should be explicitly assigned an empty string.
+import groovy.json.JsonSlurper
+import groovy.xml.XmlSlurper
+import groovy.json.JsonOutput
 
-Note: In real time api response few field might not present ,so explicitly need to set empty string so can't break
+def extractFieldsFromXmlResponse(String xmlResponse) {
+    // Initialize ALL required fields with empty strings - GUARANTEED to have all fields
+    def resultMap = [
+        'ceasedate': '',
+        'reduced face value': '',
+        'maturity date.': '',
+        'CA LTC Rider': '',
+        'Interest rate': '',
+        'withdrawal Amount': '',
+        'email Address': '',
+        'anniversaryDate': '',
+        'effectiveDate': '',
+        'deathBenfitAmount': '',
+        'terminationDate': '',
+        'ceaseDate': '',
+        'policyStatus': '',
+        'cashValue': '',
+        'surrenderValue': '',
+        'LastPaymentDate': '',
+        'LastPaymentAmount': '',
+        'PaidToDate': '',
+        'PremiumAmount': '',
+        'billingFrequency': '',
+        'directBillingMode': '',
+        'premiumDueDate': '',
+        'API for user authentication verification': '',
+        'email address': '',
+        'address': '',
+        'PaymentAmount': '',
+        'premiumAmount': ''
+    ]
+    
+    try {
+        // Convert XML to JSON
+        def xml = new XmlSlurper().parseText(xmlResponse)
+        def jsonString = JsonOutput.toJson(xml)
+        def json = new JsonSlurper().parseText(jsonString)
+        
+        // Navigate to common sections
+        def policy = json?.TXLifeResponse?.OLifE?.Holding?.Policy
+        def life = policy?.Life
+        def coverage = life?.Coverage
+        def userAuth = json?.UserAuthResponse
+        
+        // Find parties
+        def parties = json?.TXLifeResponse?.OLifE?.Party
+        def party3 = parties?.find { it.'@id' == 'Party_3' }
+        def emailParty = parties?.find { it.EMailAddress != null }
+        
+        // Extract fields - only update if value exists
+        if (policy?.EffDate) {
+            resultMap['effectiveDate'] = policy.EffDate.toString()
+        }
+        
+        if (coverage?.DeathBenefitAmt) {
+            resultMap['deathBenfitAmount'] = coverage.DeathBenefitAmt.toString()
+        }
+        
+        if (policy?.PolicyStatus) {
+            resultMap['policyStatus'] = policy.PolicyStatus.toString()
+        }
+        
+        if (life?.CashValueAmt) {
+            resultMap['cashValue'] = life.CashValueAmt.toString()
+        }
+        
+        if (life?.NetSurrValueAmt) {
+            resultMap['surrenderValue'] = life.NetSurrValueAmt.toString()
+        }
+        
+        if (life?.LastPremDate) {
+            resultMap['LastPaymentDate'] = life.LastPremDate.toString()
+        }
+        
+        if (life?.LastPremAmt) {
+            def amount = life.LastPremAmt.toString()
+            resultMap['LastPaymentAmount'] = amount
+            resultMap['PremiumAmount'] = amount
+            resultMap['PaymentAmount'] = amount
+            resultMap['premiumAmount'] = amount
+        }
+        
+        if (policy?.PaidToDate) {
+            resultMap['PaidToDate'] = policy.PaidToDate.toString()
+        }
+        
+        if (policy?.PaymentMode) {
+            resultMap['billingFrequency'] = policy.PaymentMode.toString()
+        }
+        
+        if (policy?.PaymentMethod) {
+            resultMap['directBillingMode'] = policy.PaymentMethod.toString()
+        }
+        
+        // Interest Rate from OLifEExtension
+        def lifeExtensions = life?.OLifEExtension
+        if (lifeExtensions instanceof List) {
+            def rateExt = lifeExtensions.find { it?.LifeExtension?.WeightedAvgIntRate != null }
+            if (rateExt?.LifeExtension?.WeightedAvgIntRate) {
+                resultMap['Interest rate'] = rateExt.LifeExtension.WeightedAvgIntRate.toString()
+            }
+        } else if (lifeExtensions?.LifeExtension?.WeightedAvgIntRate) {
+            resultMap['Interest rate'] = lifeExtensions.LifeExtension.WeightedAvgIntRate.toString()
+        }
+        
+        // Email Address
+        if (emailParty?.EMailAddress?.AddrLine) {
+            def email = emailParty.EMailAddress.AddrLine.toString()
+            resultMap['email Address'] = email
+            resultMap['email address'] = email
+        }
+        
+        // Address
+        if (party3?.Address) {
+            def addr = party3.Address instanceof List ? party3.Address[0] : party3.Address
+            def parts = []
+            
+            if (addr.Line1) parts.add(addr.Line1.toString())
+            if (addr.Line2 && addr.Line2.toString().trim()) parts.add(addr.Line2.toString())
+            if (addr.Line3 && addr.Line3.toString().trim()) parts.add(addr.Line3.toString())
+            if (addr.City) parts.add(addr.City.toString())
+            if (addr.AddressState) parts.add(addr.AddressState.toString())
+            if (addr.Zip) parts.add(addr.Zip.toString())
+            
+            if (parts) {
+                resultMap['address'] = parts.join(', ')
+            }
+        }
+        
+        // User Authentication
+        if (userAuth?.TransResult?.ResultCode) {
+            resultMap['API for user authentication verification'] = userAuth.TransResult.ResultCode.toString()
+        }
+        
+    } catch (Exception e) {
+        println "Error processing XML: ${e.message}"
+        e.printStackTrace()
+        // Return map with empty strings for all fields
+    }
+    
+    return resultMap
+}
 
-API Field
-ceasedate
-reduced face value
-maturity date.
-CA LTC Rider
-Interest rate
-withdrawal Amount
-email Address
-anniversaryDate
-
-effectiveDate
-deathBenfitAmount
-terminationDate
-ceaseDate
-reduced face value
-maturity date.
-policyStatus
-cashValue
-surrenderValue
-LastPaymentDate
-LastPaymentAmount
-PaidToDate
-PremiumAmount
-billingFrequency
-directBillingMode
-premiumDueDate
-policyStatus
-API for user authentication verification
-email address
-address
-
-effectiveDate
-deathBenfitAmount
-terminationDate
-ceaseDate
-reduced face value
-maturity date.
-policyStatus
-cashValue
-surrenderValue
-LastPaymentDate
-PaymentAmount
-PaidToDate
-premiumAmount
-billingFrequency
-directBillingMode
-premiumDueDate
-policyStatus
-API for user authentication verification
-email address
-address
-
-<?xml version="1.0" encoding="UTF-8"?>
-
+// Example usage
+def xmlResponse = '''<?xml version="1.0" encoding="UTF-8"?>
 <TXLife xmlns="http://ACORD.org/Standards/Life/2">
   <UserAuthResponse xmlns="">
     <TransResult>
-      <ResultCode tc="1">The transaction was processed Successfully with no more information</ResultCode>
-      <ConfirmationID>LIFEPRO:1762422014558</ConfirmationID>
+      <ResultCode tc="1">The transaction was processed Successfully</ResultCode>
     </TransResult>
-    <SvrDate>2025-11-06</SvrDate>
-    <SvrTime>09:40:14+00:00</SvrTime>
   </UserAuthResponse>
   <TXLifeResponse xmlns="">
-    <TransRefGUID>c9ecd7ab-d2a6-4597-8d93-fae757632901</TransRefGUID>
-    <TransType tc="203">Holding Inquiry</TransType>
-    <TransExeDate>2025-11-06</TransExeDate>
-    <TransExeTime>09:40:14+00:00</TransExeTime>
-    <TransMode tc="1">Trial request (e.g. Trial application) Results are not saved by receiver</TransMode>
-    <TransResult>
-      <ResultCode tc="2">The transaction was processed successfully but some condition causes information to be returned. This is sometimes informational only and sometimes a warning.</ResultCode>
-      <ConfirmationID>LIFEPRO:Holding Inquiry:1762422015795</ConfirmationID>
-    </TransResult>
     <OLifE>
       <Holding id="Holding_1">
-        <HoldingTypeCode tc="2">Policy</HoldingTypeCode>
-        <AssetValue>171575.22</AssetValue>
-        <LiabilityValue>0</LiabilityValue>
-        <AsOfDate>2025-11-06</AsOfDate>
         <Policy id="Policy_1">
-          <CarrierAdminSystem>LIFEPRO</CarrierAdminSystem>
-          <PolNumber>000060033607</PolNumber>
-          <LineOfBusiness tc="1">Life</LineOfBusiness>
-          <ProductType tc="3">Universal Life</ProductType>
-          <ProductCode>TULTRA98</ProductCode>
-          <CarrierCode>07</CarrierCode>
-          <PlanName>TRANSULTRA 115</PlanName>
-          <ShortName>2061</ShortName>
           <PolicyStatus tc="1">Active (inforce).</PolicyStatus>
-          <PolicyValue>171575.22</PolicyValue>
-          <PolFee>0</PolFee>
           <EffDate>1998-11-23</EffDate>
-          <StatusChangeDate>1998-11-23</StatusChangeDate>
           <PaidToDate>2025-12-23</PaidToDate>
           <PaymentMode tc="4">MONTHLY</PaymentMode>
           <PaymentMethod tc="26">Pre-Authorized Check</PaymentMethod>
           <Life id="Life_1">
             <LastPremAmt>750</LastPremAmt>
             <LastPremDate>2025-11-03</LastPremDate>
-            <MinPremAmt>0</MinPremAmt>
-            <MaxAvailableLoan>168961.94</MaxAvailableLoan>
-            <FaceAmt>500000</FaceAmt>
-            <NetSurrValueAmt>171575.22</NetSurrValueAmt>
             <CashValueAmt>171575.22</CashValueAmt>
-            <SurrenderChargeAmt>0</SurrenderChargeAmt>
+            <NetSurrValueAmt>171575.22</NetSurrValueAmt>
             <Coverage id="Coverage_1">
-              <PlanName>TRANSULTRA 115</PlanName>
-              <ProductCode>TULTRA98</ProductCode>
-              <CovNumber>01</CovNumber>
-              <LifeCovStatus tc="1">Active (inforce).</LifeCovStatus>
-              <IndicatorCode tc="1">Base</IndicatorCode>
-              <CurrentAmt>500000</CurrentAmt>
               <DeathBenefitAmt>500000</DeathBenefitAmt>
-              <InitCovAmt>1000000</InitCovAmt>
-              <CurrentNumberOfUnits>500</CurrentNumberOfUnits>
-              <ValuePerUnit>1000</ValuePerUnit>
-              <EffDate>1998-11-23</EffDate>
-              <LifeParticipant id="LifeParticipant_1">
-                <ParticipantName>GLENN E JOHNSON</ParticipantName>
-                <LifeParticipantRoleCode tc="1">Primary Insured</LifeParticipantRoleCode>
-                <IssueAge>49</IssueAge>
-              </LifeParticipant>
             </Coverage>
-            <OLifEExtension ExtensionCode="LifeExtension" VendorCode="37">
-              <LifeExtension id="LifeExtension_7211"/>
-            </OLifEExtension>
-            <OLifEExtension ExtensionCode="LifeExtension" VendorCode="37">
-              <LifeExtension id="LifeExtension_7212">
-                <PolicyValueLessSurrenderCharge>171575.22</PolicyValueLessSurrenderCharge>
-              </LifeExtension>
-            </OLifEExtension>
-            <OLifEExtension ExtensionCode="LifeExtension" VendorCode="37">
-              <LifeExtension id="LifeExtension_7213">
-                <NetCashValueAmt>171575.22</NetCashValueAmt>
-              </LifeExtension>
-            </OLifEExtension>
             <OLifEExtension ExtensionCode="LifeExtension" VendorCode="37">
               <LifeExtension id="LifeExtension_7214">
                 <WeightedAvgIntRate>4</WeightedAvgIntRate>
               </LifeExtension>
             </OLifEExtension>
           </Life>
-          <ApplicationInfo>
-            <ApplicationJurisdiction tc="12">Florida</ApplicationJurisdiction>
-          </ApplicationInfo>
-          <FinancialActivity id="FinancialActivity_7215">
-            <FinActivityType tc="1"></FinActivityType>
-            <FinActivityNetAmt>697.5</FinActivityNetAmt>
-          </FinancialActivity>
-          <OLifEExtension ExtensionCode="PolicyExtension" VendorCode="37">
-            <PolicyExtension id="PolicyExtension_7216">
-              <IssueCo>07</IssueCo>
-              <ProdLetterName>TransUltra 115</ProdLetterName>
-              <NewBalanceAmt>750</NewBalanceAmt>
-              <LastFileMaintDate>2018-04-03</LastFileMaintDate>
-              <AxiomTypeCode tc="1">Non-Axiom Policy</AxiomTypeCode>
-            </PolicyExtension>
-          </OLifEExtension>
-          <OLifEExtension ExtensionCode="PolicyExtension" VendorCode="37">
-            <PolicyExtension id="PolicyExtension_7217">
-              <RestorativeGracePeriodStatus>2</RestorativeGracePeriodStatus>
-            </PolicyExtension>
-          </OLifEExtension>
         </Policy>
       </Holding>
-      <Party id="Party_1">
-        <FullName>G/K JOHNSON JNT LT 040813</FullName>
-        <GovtID>26580448*</GovtID>
-        <Person>
-          <FirstName>G/K JOHNSON JNT LT 040813</FirstName>
-          <LastName></LastName>
-          <Gender tc="0"></Gender>
-        </Person>
-      </Party>
       <Party id="Party_3">
-        <FullName>GLENN E JOHNSON</FullName>
-        <GovtID>265804480</GovtID>
-        <Person>
-          <FirstName>GLENN E</FirstName>
-          <LastName>JOHNSON</LastName>
-          <Gender tc="1">M</Gender>
-          <BirthDate>1949-05-27</BirthDate>
-        </Person>
         <Address id="Address_2">
           <Line1>73 VILLAGE WALK LANE</Line1>
-          <Line2></Line2>
-          <Line3>PONTE VEDRA BEACH FL 32082</Line3>
           <City>PONTE VEDRA BEACH</City>
           <AddressState>FL</AddressState>
-          <AddressStateTC tc="12">Florida</AddressStateTC>
           <Zip>32082</Zip>
-          <PrefAddr tc="1">True</PrefAddr>
-        </Address>
-      </Party>
-      <Party id="Party_5">
-        <FullName>KAREN S JOHNSON</FullName>
-        <GovtID>261138775</GovtID>
-        <Person>
-          <FirstName>KAREN S</FirstName>
-          <LastName>JOHNSON</LastName>
-          <BirthDate>1949-06-12</BirthDate>
-        </Person>
-        <Address id="Address_3">
-          <Line1>73 WILLAGE WALK LANE</Line1>
-          <Line2></Line2>
-          <Line3>PONTE VEDRA BEACH FL 32082</Line3>
-          <City>PONTE VEDRA BEACH</City>
-          <AddressState>FL</AddressState>
-          <AddressStateTC tc="12">Florida</AddressStateTC>
-          <Zip>32082</Zip>
-          <PrefAddr tc="1">True</PrefAddr>
         </Address>
       </Party>
       <Party id="Party_7">
-        <PartyTypeCode tc="2">Organization</PartyTypeCode>
-        <CarrierAdminSystem>PPLUS</CarrierAdminSystem>
-        <FullName>SMALL BUSINESS INSURANCE AGENCY INC</FullName>
-        <GovtID>042681269</GovtID>
-        <ResidenceState tc="0">Unknown</ResidenceState>
-        <Organization>
-          <AbbrName>SMALL BUSINESS INSURANCE AGENCY INC</AbbrName>
-        </Organization>
-        <Address id="Address_818">
-          <AddressTypeCode tc="1003700900">Primary</AddressTypeCode>
-          <Line1>38 AUSTIN ST</Line1>
-          <City>WORCESTER</City>
-          <AddressState>MA</AddressState>
-          <AddressStateTC tc="26">Massachusetts</AddressStateTC>
-          <Zip>01609-2420</Zip>
-          <AddressCountryTC tc="1">United States of America</AddressCountryTC>
-          <StartDate>2019-01-04</StartDate>
-        </Address>
-        <Phone id="Phone_819">
-          <PhoneTypeCode tc="4">Business Fax</PhoneTypeCode>
-          <AreaCode>508</AreaCode>
-          <DialNumber>7538756</DialNumber>
-        </Phone>
-        <Phone id="Phone_820">
-          <PhoneTypeCode tc="2">Business</PhoneTypeCode>
-          <AreaCode>508</AreaCode>
-          <DialNumber>7950635</DialNumber>
-        </Phone>
-        <Producer>
-          <CarrierAppointment id="CarrierAppointment_822">
-            <CompanyProducerID>1297709</CompanyProducerID>
-            <CarrierCode>TOL</CarrierCode>
-            <CarrierName>TRANSAMERICA LIFE INSURANCE COMPANY</CarrierName>
-            <CarrierApptTypeCode tc="1">Agent/Producer</CarrierApptTypeCode>
-            <CarrierApptStatus tc="1">Active</CarrierApptStatus>
-            <CarrierApptStatusReason>Active</CarrierApptStatusReason>
-            <DistributionAgreementInfo id="DistributionAgreementInfo_823">
-              <PaymentForm tc="7">Electronic Funds Transfer</PaymentForm>
-            </DistributionAgreementInfo>
-          </CarrierAppointment>
-        </Producer>
         <EMailAddress id="EMailAddress_821">
-          <EMailType tc="1">Business</EMailType>
           <AddrLine>SBIA@SBIA.COM</AddrLine>
         </EMailAddress>
       </Party>
-      <Party id="Party_9">
-        <PartyTypeCode tc="2">Organization</PartyTypeCode>
-        <CarrierAdminSystem>PPLUS</CarrierAdminSystem>
-        <FullName>SMALL BUSINESS INSURANCE AGENCY INC</FullName>
-        <GovtID></GovtID>
-        <ResidenceState tc="0">Unknown</ResidenceState>
-        <Organization>
-          <AbbrName>SMALL BUSINESS INSURANCE AGENCY INC</AbbrName>
-        </Organization>
-        <Address id="Address_870">
-          <AddressTypeCode tc="1003700900">Primary</AddressTypeCode>
-          <Line1>38 AUSTIN ST</Line1>
-          <City>WORCESTER</City>
-          <AddressState>MA</AddressState>
-          <AddressStateTC tc="26">Massachusetts</AddressStateTC>
-          <Zip>01609-2420</Zip>
-          <AddressCountryTC tc="1">United States of America</AddressCountryTC>
-          <StartDate>2019-01-04</StartDate>
-        </Address>
-        <Phone id="Phone_871">
-          <PhoneTypeCode tc="2">Business</PhoneTypeCode>
-          <AreaCode>508</AreaCode>
-          <DialNumber>7950635</DialNumber>
-        </Phone>
-        <Producer>
-          <CarrierAppointment id="CarrierAppointment_872">
-            <CompanyProducerID>16043</CompanyProducerID>
-            <CarrierName>TRANSAMERICA LIFE INSURANCE COMPANY</CarrierName>
-            <CarrierApptTypeCode tc="4">Agency/General Agent</CarrierApptTypeCode>
-            <CarrierApptStatus tc="0">Unknown</CarrierApptStatus>
-            <CarrierApptStatusReason>Unknown</CarrierApptStatusReason>
-            <DistributionAgreementInfo id="DistributionAgreementInfo_873">
-              <PaymentForm tc="0">Unknown</PaymentForm>
-            </DistributionAgreementInfo>
-          </CarrierAppointment>
-          <OLifEExtension ExtensionCode="ProducerExtension" VendorCode="37">
-            <ProducerExtension id="ProducerExtension_874">
-              <AdministeringCarrierCode>TOL</AdministeringCarrierCode>
-            </ProducerExtension>
-          </OLifEExtension>
-        </Producer>
-      </Party>
-      <Relation OriginatingObjectID="Holding_1" RelatedObjectID="Party_9" id="Relation_10">
-        <OriginatingObjectType tc="4"></OriginatingObjectType>
-        <RelatedObjectType tc="6"></RelatedObjectType>
-        <RelationRoleCode tc="48">General Agent</RelationRoleCode>
-      </Relation>
-      <Relation OriginatingObjectID="Party_7" RelatedObjectID="Party_9" id="Relation_11">
-        <OriginatingObjectType tc="6"></OriginatingObjectType>
-        <RelatedObjectType tc="6"></RelatedObjectType>
-        <RelationRoleCode tc="154">Servicing Agency</RelationRoleCode>
-      </Relation>
-      <Relation OriginatingObjectID="Holding_1" RelatedObjectID="Party_1" id="Relation_2">
-        <OriginatingObjectType tc="4"></OriginatingObjectType>
-        <RelatedObjectType tc="6"></RelatedObjectType>
-        <RelationRoleCode tc="34">Beneficiary</RelationRoleCode>
-      </Relation>
-      <Relation OriginatingObjectID="Holding_1" RelatedObjectID="Party_3" id="Relation_4">
-        <OriginatingObjectType tc="4"></OriginatingObjectType>
-        <RelatedObjectType tc="6"></RelatedObjectType>
-        <RelationRoleCode tc="32">Insured</RelationRoleCode>
-      </Relation>
-      <Relation OriginatingObjectID="Holding_1" RelatedObjectID="Party_5" id="Relation_6">
-        <OriginatingObjectType tc="4"></OriginatingObjectType>
-        <RelatedObjectType tc="6"></RelatedObjectType>
-        <RelationRoleCode tc="8">Owner</RelationRoleCode>
-        <OLifEExtension ExtensionCode="RelationExtension" VendorCode="37">
-          <RelationExtension id="RelationExtension_7241">
-            <PrimaryInd tc="1">True</PrimaryInd>
-          </RelationExtension>
-        </OLifEExtension>
-      </Relation>
-      <Relation OriginatingObjectID="Holding_1" RelatedObjectID="Party_7" id="Relation_8">
-        <OriginatingObjectType tc="4"></OriginatingObjectType>
-        <RelatedObjectType tc="6"></RelatedObjectType>
-        <RelationRoleCode tc="38">Servicing Agent</RelationRoleCode>
-      </Relation>
     </OLifE>
   </TXLifeResponse>
 </TXLife>
+'''
+
+// Execute and display results
+def result = extractFieldsFromXmlResponse(xmlResponse)
+
+println "Extracted Fields:"
+println "="*60
+result.each { key, value ->
+    println "${key.padRight(45)} : '${value}'"
+}
+
+return result
